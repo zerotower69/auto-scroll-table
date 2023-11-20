@@ -20,6 +20,7 @@
     "babel-plugin-import": "1.13.6",
     "sass": "^1.69.5",
     "vite": "^5.0.0",
+    "vite-plugin-html": "^3.2.0",
     "vite-plugin-style-import": "^2.0.0"
   }
 }
