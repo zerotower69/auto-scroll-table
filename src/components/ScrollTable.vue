@@ -3,17 +3,21 @@ import {nextTick, onMounted, onUpdated, reactive, ref, useAttrs, watch} from "vu
 import {useElementBounding, useIntervalFn, useRafFn} from "@vueuse/core";
 
 const props =defineProps({
+  //表格数据
   data:{
     type:Array,
     required:true
   },
-  speed:{
+  //滚动步进
+  step:{
     type:Number,
-    default:2
+    default:2,
+    validator(val){
+      if(val<1){
+        console.warn("[ScrollTable] scroll step can't be smaller than 1, it will be reset to 1 instead.")
+      }
+    }
   },
-  interval:{
-    type:Number,
-  }
 })
 
 const tableData =ref()
@@ -25,10 +29,10 @@ const tableState =reactive({
   contentHeight:0,
   rowHeight:0,
   dataHeight:0,
-  loadedTop:false,
-  loadedBottom:false,
   isLoaded:false,
-  lock:false
+  lock:false,
+  //浏览器的scrollTop不能滚小于1，否则就算为0
+  step: props.step<1 ? 1:props.step
 })
 //scroll的高度
 const tableScrollTop =ref(0)
@@ -54,13 +58,6 @@ watch(()=>props.data,(data)=>{
   }
   tableState.isLoaded=false
 },{immediate:true})
-
-watch(()=>tableScrollTop.value,()=>{
-
-})
-onMounted(()=>{
-  // console.log(tableRef.value.$refs)
-})
 
 //props剔除
 function getAttrs(){
@@ -98,7 +95,7 @@ function setTableAutoScroll(){
     pause()
   }
   const res = useRafFn(()=>{
-    setTableScrollTop((tableScrollTop.value+props.speed))
+    setTableScrollTop((tableScrollTop.value+tableState.step))
   })
   resume = res.resume;
   pause =res.pause;
@@ -119,7 +116,9 @@ function restartScroll(){
 
 //设置table滚动位置，scrollTop
 function setTableScrollTop(top){
-  tableRef.value.scrollTo(null,top)
+  // tableRef.value.scrollTo(null,top)
+  const left=tableRef.value.getScroll().scrollLeft
+  tableRef.value.scrollTo(left,top)
 }
 
   //获取table的原始的各处高度数据
@@ -136,11 +135,6 @@ function setTableScrollTop(top){
         tableState.rowHeight = rowHeight.value??0;
         tableState.contentHeight = contentHeight.value ?? 0;
         tableState.dataHeight = rowHeight.value *props.data.length
-        // watch([() => rowHeight.value, () => contentHeight.value], ([rowHeight, cHeight]) => {
-        //   tableState.dataHeight = rowHeight * props.data.length
-        //   tableState.contentHeight = cHeight
-        //   tableState.rowHeight = rowHeight
-        // })
         //loaded后触发自动滚动
         tableState.isLoaded = true
         setTableScrollTop(tableState.dataHeight)
@@ -151,15 +145,13 @@ function setTableScrollTop(top){
 
 function handleMouseover(){
    tableState.lock=true
-   setTableData(tableState.lock)
+   // setTableData()
    stopScroll()
 }
 function handleMouseleave(){
   setTableData()
-  setTimeout(()=>{
-    restartScroll()
-  },10)
-  setTableScrollTop(tableScrollTop.value+props.speed)
+  restartScroll()
+  setTableScrollTop(tableScrollTop.value+tableState.step)
 }
 </script>
 
@@ -170,43 +162,13 @@ function handleMouseleave(){
 </template>
 
 <style lang="scss" scoped>
-.mytable-scrollbar{
-  overflow-x: hidden;
-  overflow-y:hidden;
-}
-/*滚动条整体部分*/
-.mytable-scrollbar ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-/*滚动条的轨道*/
-.mytable-scrollbar ::-webkit-scrollbar-track {
-  background-color: #FFFFFF01;
-}
-/*滚动条里面的小方块，能向上向下移动*/
-.mytable-scrollbar ::-webkit-scrollbar-thumb {
-  background-color: #bfbfbf;
-  border-radius: 5px;
-  border: 1px solid #F1F1F1;
-  box-shadow: inset 0 0 6px rgba(0,0,0,.3);
-}
-.mytable-scrollbar ::-webkit-scrollbar-thumb:hover {
-  background-color: #A8A8A8;
-}
-.mytable-scrollbar ::-webkit-scrollbar-thumb:active {
-  background-color: #787878;
-}
-/*边角，即两个滚动条的交汇处*/
-.mytable-scrollbar ::-webkit-scrollbar-corner {
-  background-color: #FFFFFF;
-}
 </style>
 <style lang="scss">
 .vxe-table--body-wrapper{
   overflow: hidden!important;
-  &:hover{
-    //overflow-y: scroll;
-    overflow-y: scroll!important;
-  }
+  //&:hover{
+  //  //overflow-y: scroll;
+  //  overflow-y: scroll!important;
+  //}
 }
 </style>
